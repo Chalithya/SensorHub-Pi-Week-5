@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - IoT Sensor Data{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Status Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <span class="status-indicator status-online"></span>
+                        System Status: Online
+                        <small class="float-end">Server IP: {{ server_ip }}:5000</small>
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <h3 class="stat-number" id="total-readings">0</h3>
+                    <p class="stat-label">Total Readings</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <h3 class="stat-number" id="active-devices">0</h3>
+                    <p class="stat-label">Active Devices</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <h3 class="stat-number" id="avg-speed">0.0</h3>
+                    <p class="stat-label">Avg Speed (m/s)</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <h3 class="stat-number" id="data-size">0.0</h3>
+                    <p class="stat-label">Data Size (MB)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Real-time Chart -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line"></i> Real-time Sensor Data
+                        <div class="float-end">
+                            <small class="text-muted me-3">
+                                <i class="fas fa-clock"></i> Last updated: <span id="last-updated">Never</span>
+                            </small>
+                            <small class="text-muted me-3">
+                                <i class="fas fa-sync-alt" id="refresh-icon"></i> Live: <span id="countdown">10</span>s
+                            </small>
+                            <button class="btn btn-sm btn-outline-light" onclick="refreshChart()">
+                                <i class="fas fa-sync-alt"></i> Refresh Now
+                            </button>
+                        </div>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="realtime-chart" class="chart-container">
+                        <div class="text-center">
+                            <div class="loading-spinner"></div>
+                            <p class="mt-2">Loading real-time data...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history"></i> Recent Activity
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Device</th>
+                                    <th>Activity</th>
+                                    <th>Speed</th>
+                                    <th>Location</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recent-activity">
+                                <tr>
+                                    <td colspan="5" class="text-center">
+                                        <div class="loading-spinner"></div>
+                                        Loading recent activity...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-running"></i> Activity Distribution
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="activity-chart" class="chart-container">
+                        <div class="text-center">
+                            <div class="loading-spinner"></div>
+                            <p class="mt-2">Loading activity data...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh intervals
+let statsRefreshInterval;
+let realtimeRefreshInterval;
+let countdownInterval;
+let countdownSeconds = 10; // Real-time sections refresh every 10 seconds
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboard();
+    startAutoRefresh();
+    startCountdown();
+});
+
+function loadDashboard() {
+    // Load all components initially
+    loadStats();
+    loadRealtimeComponents();
+    loadActivityChart();
+}
+
+function loadRealtimeComponents() {
+    // Show refreshing indicators for real-time sections
+    showRealtimeRefreshingIndicators();
+    
+    // Load real-time components
+    Promise.all([
+        loadRealtimeChart(),
+        loadRecentActivity()
+    ]).then(() => {
+        // Update last updated timestamp
+        updateLastUpdatedTime();
+        // Hide refreshing indicators
+        hideRealtimeRefreshingIndicators();
+        // Reset countdown
+        resetCountdown();
+    }).catch(error => {
+        console.error('Error loading real-time components:', error);
+        hideRealtimeRefreshingIndicators();
+    });
+}
+
+function showRealtimeRefreshingIndicators() {
+    const refreshIcon = document.getElementById('refresh-icon');
+    if (refreshIcon) {
+        refreshIcon.classList.add('fa-spin');
+        refreshIcon.style.color = '#007bff';
+    }
+    
+    // Add visual indicator to real-time sections
+    const realtimeChart = document.querySelector('#realtime-chart').closest('.card');
+    const recentActivity = document.querySelector('#recent-activity').closest('.card');
+    
+    if (realtimeChart) {
+        realtimeChart.style.boxShadow = '0 0 10px rgba(0, 123, 255, 0.3)';
+        realtimeChart.style.borderColor = '#007bff';
+    }
+    
+    if (recentActivity) {
+        recentActivity.style.boxShadow = '0 0 10px rgba(0, 123, 255, 0.3)';
+        recentActivity.style.borderColor = '#007bff';
+    }
+}
+
+function hideRealtimeRefreshingIndicators() {
+    const refreshIcon = document.getElementById('refresh-icon');
+    if (refreshIcon) {
+        refreshIcon.classList.remove('fa-spin');
+        refreshIcon.style.color = '';
+    }
+    
+    // Remove visual indicator from real-time sections
+    const realtimeChart = document.querySelector('#realtime-chart').closest('.card');
+    const recentActivity = document.querySelector('#recent-activity').closest('.card');
+    
+    if (realtimeChart) {
+        realtimeChart.style.boxShadow = '';
+        realtimeChart.style.borderColor = '';
+    }
+    
+    if (recentActivity) {
+        recentActivity.style.boxShadow = '';
+        recentActivity.style.borderColor = '';
+    }
+}
+
+function showStatsRefreshingIndicators() {
+    // Add visual indicator to stat cards
+    const statCards = document.querySelectorAll('.stat-card');
+    statCards.forEach(card => {
+        card.style.opacity = '0.7';
+        card.style.transform = 'scale(1.02)';
+    });
+}
+
+function hideStatsRefreshingIndicators() {
+    // Remove visual indicator from stat cards
+    const statCards = document.querySelectorAll('.stat-card');
+    statCards.forEach(card => {
+        card.style.opacity = '1';
+        card.style.transform = 'scale(1)';
+    });
+}
+
+function updateLastUpdatedTime() {
+    const lastUpdated = document.getElementById('last-updated');
+    if (lastUpdated) {
+        lastUpdated.textContent = new Date().toLocaleTimeString();
+    }
+}
+
+function resetCountdown() {
+    countdownSeconds = 10;
+    updateCountdownDisplay();
+}
+
+function updateCountdownDisplay() {
+    const countdownElement = document.getElementById('countdown');
+    if (countdownElement) {
+        countdownElement.textContent = countdownSeconds;
+        
+        // Change color based on countdown
+        if (countdownSeconds <= 3) {
+            countdownElement.style.color = '#dc3545'; // Red for last 3 seconds
+        } else if (countdownSeconds <= 5) {
+            countdownElement.style.color = '#ffc107'; // Yellow for last 5 seconds
+        } else {
+            countdownElement.style.color = '#28a745'; // Green for normal
+        }
+    }
+}
+
+function startCountdown() {
+    countdownInterval = setInterval(() => {
+        countdownSeconds--;
+        updateCountdownDisplay();
+        
+        if (countdownSeconds <= 0) {
+            countdownSeconds = 10; // Reset to 10 seconds for real-time refresh
+        }
+    }, 1000);
+}
+
+function loadStats() {
+    showStatsRefreshingIndicators();
+    
+    return fetch('/api/stats')
+        .then(response => response.json())
+        .then(stats => {
+            // Animate number changes
+            animateNumber('total-readings', stats.total_readings);
+            animateNumber('active-devices', stats.unique_devices);
+            animateNumber('avg-speed', (stats.avg_speed || 0).toFixed(1));
+            animateNumber('data-size', (stats.data_size_mb || 0).toFixed(1));
+            
+            hideStatsRefreshingIndicators();
+        })
+        .catch(error => {
+            console.error('Error loading stats:', error);
+            hideStatsRefreshingIndicators();
+        });
+}
+
+function animateNumber(elementId, newValue) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    const currentValue = parseFloat(element.textContent) || 0;
+    const targetValue = parseFloat(newValue) || 0;
+    
+    if (currentValue !== targetValue) {
+        element.style.color = '#28a745'; // Green for updates
+        element.textContent = newValue;
+        
+        setTimeout(() => {
+            element.style.color = '';
+        }, 1000);
+    }
+}
+
+function loadRealtimeChart() {
+    return fetch('/api/chart/realtime')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                document.getElementById('realtime-chart').innerHTML = 
+                    '<div class="alert alert-warning">No real-time data available.</div>';
+                return;
+            }
+            
+            // Update chart with animation
+            const chartDiv = document.getElementById('realtime-chart');
+            if (chartDiv.data) {
+                // Update existing plot
+                Plotly.react('realtime-chart', data.data, data.layout || {}, {responsive: true});
+            } else {
+                // Create new plot
+                Plotly.newPlot('realtime-chart', data.data, data.layout || {}, {responsive: true});
+            }
+            
+            // Add visual feedback for chart update
+            chartDiv.style.border = '2px solid #28a745';
+            setTimeout(() => {
+                chartDiv.style.border = '';
+            }, 500);
+        })
+        .catch(error => {
+            document.getElementById('realtime-chart').innerHTML = 
+                '<div class="alert alert-danger">Error loading real-time chart</div>';
+            throw error;
+        });
+}
+
+function loadRecentActivity() {
+    return fetch('/api/data?limit=10')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.getElementById('recent-activity');
+            
+            if (!data.data || data.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center">No recent activity</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = data.data.slice(0, 10).map(item => `
+                <tr>
+                    <td>${new Date(item.timestamp).toLocaleTimeString()}</td>
+                    <td>${item.device_id}</td>
+                    <td><span class="badge bg-primary">${item.activity}</span></td>
+                    <td>${(item.speed || 0).toFixed(1)} m/s</td>
+                    <td>${item.latitude && item.longitude ? 
+                        `${item.latitude.toFixed(4)}, ${item.longitude.toFixed(4)}` : 
+                        'N/A'}</td>
+                </tr>
+            `).join('');
+        })
+        .catch(error => {
+            document.getElementById('recent-activity').innerHTML = 
+                '<tr><td colspan="5" class="text-center text-danger">Error loading activity</td></tr>';
+            throw error;
+        });
+}
+
+function loadActivityChart() {
+    return fetch('/api/chart/activity')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                document.getElementById('activity-chart').innerHTML = 
+                    '<div class="alert alert-warning">No activity data available.</div>';
+                return;
+            }
+            
+            const chartDiv = document.getElementById('activity-chart');
+            if (chartDiv.data) {
+                Plotly.react('activity-chart', data.data, data.layout || {}, {responsive: true});
+            } else {
+                Plotly.newPlot('activity-chart', data.data, data.layout || {}, {responsive: true});
+            }
+        })
+        .catch(error => {
+            document.getElementById('activity-chart').innerHTML = 
+                '<div class="alert alert-danger">Error loading activity chart</div>';
+            throw error;
+        });
+}
+
+function refreshChart() {
+    // Manual refresh - immediate update
+    loadRealtimeComponents();
+}
+
+function startAutoRefresh() {
+    // Real-time components refresh every 10 seconds
+    realtimeRefreshInterval = setInterval(loadRealtimeComponents, 10000);
+    
+    // Stats refresh every 30 seconds
+    statsRefreshInterval = setInterval(loadStats, 30000);
+}
+
+function stopAutoRefresh() {
+    if (realtimeRefreshInterval) {
+        clearInterval(realtimeRefreshInterval);
+    }
+    if (statsRefreshInterval) {
+        clearInterval(statsRefreshInterval);
+    }
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+    }
+}
+
+// Clean up on page unload
+window.addEventListener('beforeunload', stopAutoRefresh);
+</script>
+{% endblock %} 

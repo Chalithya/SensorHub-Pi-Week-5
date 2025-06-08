@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+
+{% block title %}Data Export - IoT Sensor Data{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-download"></i> Data Export & Download
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Options -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-filter"></i> Export Filters
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="export-form">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="device-filter" class="form-label">Device ID</label>
+                                <select class="form-select" id="device-filter">
+                                    <option value="">All Devices</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="activity-filter" class="form-label">Activity Type</label>
+                                <select class="form-select" id="activity-filter">
+                                    <option value="">All Activities</option>
+                                    <option value="stationary">Stationary</option>
+                                    <option value="walking">Walking</option>
+                                    <option value="running">Running</option>
+                                    <option value="turning">Turning</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="start-date" class="form-label">Start Date</label>
+                                <input type="datetime-local" class="form-control" id="start-date">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="end-date" class="form-label">End Date</label>
+                                <input type="datetime-local" class="form-control" id="end-date">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="max-records" class="form-label">Maximum Records</label>
+                                <select class="form-select" id="max-records">
+                                    <option value="100">100 records</option>
+                                    <option value="500">500 records</option>
+                                    <option value="1000" selected>1,000 records</option>
+                                    <option value="5000">5,000 records</option>
+                                    <option value="">All records</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="export-format" class="form-label">Export Format</label>
+                                <select class="form-select" id="export-format">
+                                    <option value="csv" selected>CSV (Comma Separated)</option>
+                                    <option value="json">JSON (JavaScript Object)</option>
+                                </select>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle"></i> CSV format is optimized for pandas DataFrame analysis
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12">
+                                <button type="button" class="btn btn-primary me-2" onclick="previewData()">
+                                    <i class="fas fa-eye"></i> Preview Data
+                                </button>
+                                <button type="button" class="btn btn-success" onclick="exportData()">
+                                    <i class="fas fa-download"></i> Export Data
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="resetFilters()">
+                                    <i class="fas fa-refresh"></i> Reset Filters
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Export Summary -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle"></i> Export Summary
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong>Records to Export:</strong>
+                        <span id="record-count" class="text-primary">-</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Estimated Size:</strong>
+                        <span id="estimated-size" class="text-info">-</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Date Range:</strong>
+                        <span id="date-range" class="text-secondary">-</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Devices:</strong>
+                        <span id="device-count" class="text-warning">-</span>
+                    </div>
+                    <div class="alert alert-info small">
+                        <i class="fas fa-lightbulb"></i>
+                        <strong>Pandas Analysis Tips:</strong><br>
+                        • CSV format includes proper headers for easy DataFrame creation<br>
+                        • Use <code>pd.read_csv('file.csv')</code> to load your data<br>
+                        • Timestamps are in ISO 8601 format for easy parsing
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Preview -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-table"></i> Data Preview
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="data-preview">
+                        <div class="text-center text-muted p-4">
+                            Click "Preview Data" to see a sample of your filtered data
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadDeviceOptions();
+    updateSummary();
+});
+
+function loadDeviceOptions() {
+    fetch('/api/data?limit=1000')
+        .then(response => response.json())
+        .then(data => {
+            const devices = [...new Set(data.data.map(item => item.device_id))];
+            const select = document.getElementById('device-filter');
+            select.innerHTML = '<option value="">All Devices</option>';
+            devices.forEach(device => {
+                select.innerHTML += `<option value="${device}">${device}</option>`;
+            });
+        })
+        .catch(error => console.error('Error loading devices:', error));
+}
+
+function buildApiUrl() {
+    const params = new URLSearchParams();
+    
+    const device = document.getElementById('device-filter').value;
+    const activity = document.getElementById('activity-filter').value;
+    const startDate = document.getElementById('start-date').value;
+    const endDate = document.getElementById('end-date').value;
+    const maxRecords = document.getElementById('max-records').value;
+    
+    if (device) params.append('device_id', device);
+    if (activity) params.append('activity', activity);
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    if (maxRecords) params.append('limit', maxRecords);
+    
+    return `/api/data?${params.toString()}`;
+}
+
+function previewData() {
+    const previewDiv = document.getElementById('data-preview');
+    previewDiv.innerHTML = '<div class="text-center"><div class="loading-spinner"></div><p class="mt-2">Loading preview...</p></div>';
+    
+    fetch(buildApiUrl())
+        .then(response => response.json())
+        .then(data => {
+            if (!data.data || data.data.length === 0) {
+                previewDiv.innerHTML = '<div class="alert alert-warning">No data matches your filters.</div>';
+                return;
+            }
+            
+            // Show first 10 records
+            const preview = data.data.slice(0, 10);
+            
+            let tableHtml = `
+                <div class="table-responsive">
+                    <table class="table table-striped table-sm">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Device</th>
+                                <th>Activity</th>
+                                <th>Accel (X,Y,Z)</th>
+                                <th>Gyro (X,Y,Z)</th>
+                                <th>Speed</th>
+                                <th>GPS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            preview.forEach(row => {
+                tableHtml += `
+                    <tr>
+                        <td>${new Date(row.timestamp).toLocaleString()}</td>
+                        <td>${row.device_id}</td>
+                        <td><span class="badge bg-primary">${row.activity}</span></td>
+                        <td>${(row.accel_x || 0).toFixed(2)}, ${(row.accel_y || 0).toFixed(2)}, ${(row.accel_z || 0).toFixed(2)}</td>
+                        <td>${(row.gyro_x || 0).toFixed(2)}, ${(row.gyro_y || 0).toFixed(2)}, ${(row.gyro_z || 0).toFixed(2)}</td>
+                        <td>${(row.speed || 0).toFixed(1)} m/s</td>
+                        <td>${row.latitude && row.longitude ? 
+                            `${row.latitude.toFixed(4)}, ${row.longitude.toFixed(4)}` : 
+                            'N/A'}</td>
+                    </tr>
+                `;
+            });
+            
+            tableHtml += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            if (data.data.length > 10) {
+                tableHtml += `<div class="alert alert-info small">Showing first 10 of ${data.data.length} records</div>`;
+            }
+            
+            previewDiv.innerHTML = tableHtml;
+            updateSummary(data.data);
+        })
+        .catch(error => {
+            previewDiv.innerHTML = '<div class="alert alert-danger">Error loading preview data</div>';
+        });
+}
+
+function exportData() {
+    const format = document.getElementById('export-format').value;
+    
+    // Build export URL based on format
+    let exportUrl;
+    if (format === 'json') {
+        exportUrl = '/api/export/json';
+    } else {
+        exportUrl = '/api/export/csv';
+    }
+    
+    // Add filter parameters
+    const params = new URLSearchParams();
+    const device = document.getElementById('device-filter').value;
+    const activity = document.getElementById('activity-filter').value;
+    const startDate = document.getElementById('start-date').value;
+    const endDate = document.getElementById('end-date').value;
+    
+    if (device) params.append('device_id', device);
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    if (format !== 'json') {
+        params.append('format', format);
+        params.append('headers', 'true');
+    }
+    
+    const url = `${exportUrl}?${params.toString()}`;
+    
+    // Create download link
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `sensor_data_${new Date().toISOString().slice(0, 10)}.${format}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Show success message
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-success alert-dismissible fade show';
+    alertDiv.innerHTML = `
+        <i class="fas fa-check-circle"></i> Export started! Your download should begin shortly.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.container').firstChild);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+function updateSummary(data = null) {
+    if (data) {
+        document.getElementById('record-count').textContent = data.length.toLocaleString();
+        
+        // Estimate file size (rough calculation)
+        const avgRecordSize = 200; // bytes per record (estimated)
+        const estimatedBytes = data.length * avgRecordSize;
+        const estimatedKB = estimatedBytes / 1024;
+        const estimatedMB = estimatedKB / 1024;
+        
+        if (estimatedMB > 1) {
+            document.getElementById('estimated-size').textContent = `~${estimatedMB.toFixed(1)} MB`;
+        } else {
+            document.getElementById('estimated-size').textContent = `~${estimatedKB.toFixed(0)} KB`;
+        }
+        
+        // Date range
+        const timestamps = data.map(d => new Date(d.timestamp));
+        const minDate = new Date(Math.min(...timestamps));
+        const maxDate = new Date(Math.max(...timestamps));
+        document.getElementById('date-range').textContent = 
+            `${minDate.toLocaleDateString()} - ${maxDate.toLocaleDateString()}`;
+        
+        // Device count
+        const devices = [...new Set(data.map(d => d.device_id))];
+        document.getElementById('device-count').textContent = devices.length;
+    } else {
+        document.getElementById('record-count').textContent = '-';
+        document.getElementById('estimated-size').textContent = '-';
+        document.getElementById('date-range').textContent = '-';
+        document.getElementById('device-count').textContent = '-';
+    }
+}
+
+function resetFilters() {
+    document.getElementById('device-filter').value = '';
+    document.getElementById('activity-filter').value = '';
+    document.getElementById('start-date').value = '';
+    document.getElementById('end-date').value = '';
+    document.getElementById('max-records').value = '1000';
+    document.getElementById('export-format').value = 'csv';
+    
+    document.getElementById('data-preview').innerHTML = 
+        '<div class="text-center text-muted p-4">Click "Preview Data" to see a sample of your filtered data</div>';
+    
+    updateSummary();
+}
+</script>
+{% endblock %} 

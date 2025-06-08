@@ -1,0 +1,687 @@
+{% extends "base.html" %}
+
+{% block title %}Visualizations - IoT Sensor Data{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-chart-bar"></i> Interactive Data Visualizations
+                        <div class="float-end">
+                            <button class="btn btn-sm btn-outline-light me-2" onclick="refreshAllCharts()">
+                                <i class="fas fa-sync-alt"></i> Refresh All
+                            </button>
+                        </div>
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart Controls -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label for="time-range" class="form-label">Time Range</label>
+                            <select class="form-select" id="time-range" onchange="updateCharts()">
+                                <option value="1h">Last Hour</option>
+                                <option value="6h">Last 6 Hours</option>
+                                <option value="24h" selected>Last 24 Hours</option>
+                                <option value="7d">Last 7 Days</option>
+                                <option value="all">All Time</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="device-select" class="form-label">Device Filter</label>
+                            <select class="form-select" id="device-select" onchange="updateCharts()">
+                                <option value="">All Devices</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="activity-select" class="form-label">Activity Filter</label>
+                            <select class="form-select" id="activity-select" onchange="updateCharts()">
+                                <option value="">All Activities</option>
+                                <option value="stationary">Stationary</option>
+                                <option value="walking">Walking</option>
+                                <option value="running">Running</option>
+                                <option value="turning">Turning</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="chart-type" class="form-label">Chart Style</label>
+                            <select class="form-select" id="chart-type" onchange="updateChartStyle()">
+                                <option value="lines">Line Charts</option>
+                                <option value="scatter">Scatter Plots</option>
+                                <option value="bar">Bar Charts</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Visualization Charts -->
+    <div class="row">
+        <!-- Accelerometer Data -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line"></i> Accelerometer Data (X, Y, Z)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="accelerometer-chart" class="chart-container">
+                        <div class="text-center">
+                            <div class="loading-spinner"></div>
+                            <p class="mt-2">Loading accelerometer data...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gyroscope Data -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line"></i> Gyroscope Data (X, Y, Z)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="gyroscope-chart" class="chart-container">
+                        <div class="text-center">
+                            <div class="loading-spinner"></div>
+                            <p class="mt-2">Loading gyroscope data...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Speed Over Time -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tachometer-alt"></i> Speed Over Time
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="speed-chart" class="chart-container">
+                        <div class="text-center">
+                            <div class="loading-spinner"></div>
+                            <p class="mt-2">Loading speed data...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GPS Map -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-map-marked-alt"></i> GPS Tracking Map
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="gps-map" class="chart-container">
+                        <div class="text-center">
+                            <div class="loading-spinner"></div>
+                            <p class="mt-2">Loading GPS data...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3D Acceleration -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cube"></i> 3D Acceleration Visualization
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="acceleration-3d" class="chart-container">
+                        <div class="text-center">
+                            <div class="loading-spinner"></div>
+                            <p class="mt-2">Loading 3D acceleration...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Timeline -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock"></i> Activity Timeline
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="activity-timeline" class="chart-container">
+                        <div class="text-center">
+                            <div class="loading-spinner"></div>
+                            <p class="mt-2">Loading activity timeline...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadDeviceOptions();
+    loadAllCharts();
+});
+
+function loadDeviceOptions() {
+    fetch('/api/data?limit=1000')
+        .then(response => response.json())
+        .then(data => {
+            const devices = [...new Set(data.data.map(item => item.device_id))];
+            const select = document.getElementById('device-select');
+            select.innerHTML = '<option value="">All Devices</option>';
+            devices.forEach(device => {
+                select.innerHTML += `<option value="${device}">${device}</option>`;
+            });
+        })
+        .catch(error => console.error('Error loading devices:', error));
+}
+
+function buildApiUrl() {
+    const params = new URLSearchParams();
+    
+    const timeRange = document.getElementById('time-range').value;
+    const device = document.getElementById('device-select').value;
+    const activity = document.getElementById('activity-select').value;
+    
+    if (device) params.append('device_id', device);
+    if (activity) params.append('activity', activity);
+    
+    // Convert time range to limit
+    const limitMap = {
+        '1h': 60,
+        '6h': 360,
+        '24h': 1440,
+        '7d': 10080,
+        'all': 10000
+    };
+    params.append('limit', limitMap[timeRange] || 1000);
+    
+    return `/api/data?${params.toString()}`;
+}
+
+function loadAllCharts() {
+    loadAccelerometerChart();
+    loadGyroscopeChart();
+    loadSpeedChart();
+    loadGpsMap();
+    load3DAcceleration();
+    loadActivityTimeline();
+}
+
+function loadAccelerometerChart() {
+    fetch(buildApiUrl())
+        .then(response => response.json())
+        .then(data => {
+            if (!data.data || data.data.length === 0) {
+                document.getElementById('accelerometer-chart').innerHTML = 
+                    '<div class="alert alert-warning">No accelerometer data available.</div>';
+                return;
+            }
+            
+            const timestamps = data.data.map(d => new Date(d.timestamp));
+            
+            const traces = [
+                {
+                    x: timestamps,
+                    y: data.data.map(d => d.accel_x || 0),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'X-axis',
+                    line: {color: '#ff6b6b', width: 3},
+                    hovertemplate: '<b>X-axis Acceleration</b><br>Time: %{x}<br>Value: %{y:.3f} m/s²<extra></extra>'
+                },
+                {
+                    x: timestamps,
+                    y: data.data.map(d => d.accel_y || 0),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Y-axis',
+                    line: {color: '#4ecdc4', width: 3},
+                    hovertemplate: '<b>Y-axis Acceleration</b><br>Time: %{x}<br>Value: %{y:.3f} m/s²<extra></extra>'
+                },
+                {
+                    x: timestamps,
+                    y: data.data.map(d => d.accel_z || 0),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Z-axis',
+                    line: {color: '#45b7d1', width: 3},
+                    hovertemplate: '<b>Z-axis Acceleration</b><br>Time: %{x}<br>Value: %{y:.3f} m/s²<extra></extra>'
+                }
+            ];
+            
+            const layout = {
+                title: {
+                    text: 'Accelerometer Readings - Linear Acceleration Over Time',
+                    font: {size: 16, color: '#2c3e50'}
+                },
+                xaxis: {
+                    title: {
+                        text: 'Time',
+                        font: {size: 14, color: '#2c3e50'}
+                    },
+                    showgrid: true,
+                    gridcolor: '#e0e0e0'
+                },
+                yaxis: {
+                    title: {
+                        text: 'Acceleration (m/s²)',
+                        font: {size: 14, color: '#2c3e50'}
+                    },
+                    showgrid: true,
+                    gridcolor: '#e0e0e0',
+                    tickformat: '.3f'
+                },
+                height: 500,
+                margin: {t: 80, r: 60, b: 80, l: 80},
+                plot_bgcolor: 'white',
+                paper_bgcolor: 'white',
+                font: {family: 'Segoe UI, Arial, sans-serif'},
+                legend: {
+                    orientation: 'h',
+                    x: 0.5,
+                    xanchor: 'center',
+                    y: -0.2
+                }
+            };
+            
+            Plotly.newPlot('accelerometer-chart', traces, layout, {responsive: true, displayModeBar: false});
+        })
+        .catch(error => {
+            document.getElementById('accelerometer-chart').innerHTML = 
+                '<div class="alert alert-danger">Error loading accelerometer data</div>';
+        });
+}
+
+function loadGyroscopeChart() {
+    fetch(buildApiUrl())
+        .then(response => response.json())
+        .then(data => {
+            if (!data.data || data.data.length === 0) {
+                document.getElementById('gyroscope-chart').innerHTML = 
+                    '<div class="alert alert-warning">No gyroscope data available.</div>';
+                return;
+            }
+            
+            const timestamps = data.data.map(d => new Date(d.timestamp));
+            
+            const traces = [
+                {
+                    x: timestamps,
+                    y: data.data.map(d => d.gyro_x || 0),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'X-axis Rotation',
+                    line: {color: '#ff9ff3', width: 3},
+                    hovertemplate: '<b>X-axis Rotation</b><br>Time: %{x}<br>Value: %{y:.3f} rad/s<extra></extra>'
+                },
+                {
+                    x: timestamps,
+                    y: data.data.map(d => d.gyro_y || 0),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Y-axis Rotation',
+                    line: {color: '#54a0ff', width: 3},
+                    hovertemplate: '<b>Y-axis Rotation</b><br>Time: %{x}<br>Value: %{y:.3f} rad/s<extra></extra>'
+                },
+                {
+                    x: timestamps,
+                    y: data.data.map(d => d.gyro_z || 0),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Z-axis Rotation',
+                    line: {color: '#5f27cd', width: 3},
+                    hovertemplate: '<b>Z-axis Rotation</b><br>Time: %{x}<br>Value: %{y:.3f} rad/s<extra></extra>'
+                }
+            ];
+            
+            const layout = {
+                title: {
+                    text: 'Gyroscope Readings - Angular Velocity Over Time',
+                    font: {size: 16, color: '#2c3e50'}
+                },
+                xaxis: {
+                    title: {
+                        text: 'Time',
+                        font: {size: 14, color: '#2c3e50'}
+                    },
+                    showgrid: true,
+                    gridcolor: '#e0e0e0'
+                },
+                yaxis: {
+                    title: {
+                        text: 'Angular Velocity (rad/s)',
+                        font: {size: 14, color: '#2c3e50'}
+                    },
+                    showgrid: true,
+                    gridcolor: '#e0e0e0',
+                    tickformat: '.3f'
+                },
+                height: 500,
+                margin: {t: 80, r: 60, b: 80, l: 80},
+                plot_bgcolor: 'white',
+                paper_bgcolor: 'white',
+                font: {family: 'Segoe UI, Arial, sans-serif'},
+                legend: {
+                    orientation: 'h',
+                    x: 0.5,
+                    xanchor: 'center',
+                    y: -0.2
+                }
+            };
+            
+            Plotly.newPlot('gyroscope-chart', traces, layout, {responsive: true, displayModeBar: false});
+        })
+        .catch(error => {
+            document.getElementById('gyroscope-chart').innerHTML = 
+                '<div class="alert alert-danger">Error loading gyroscope data</div>';
+        });
+}
+
+function loadSpeedChart() {
+    fetch(buildApiUrl())
+        .then(response => response.json())
+        .then(data => {
+            if (!data.data || data.data.length === 0) {
+                document.getElementById('speed-chart').innerHTML = 
+                    '<div class="alert alert-warning">No speed data available.</div>';
+                return;
+            }
+            
+            const traces = [{
+                x: data.data.map(d => new Date(d.timestamp)),
+                y: data.data.map(d => d.speed || 0),
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'GPS Speed',
+                line: {color: '#667eea', width: 3},
+                marker: {size: 6, color: '#667eea', symbol: 'circle'},
+                hovertemplate: '<b>GPS Speed</b><br>Time: %{x}<br>Speed: %{y:.2f} m/s<br>Speed: %{customdata:.2f} km/h<extra></extra>',
+                customdata: data.data.map(d => (d.speed || 0) * 3.6) // Convert m/s to km/h
+            }];
+            
+            const layout = {
+                title: {
+                    text: 'GPS Speed Over Time - Movement Velocity Analysis',
+                    font: {size: 16, color: '#2c3e50'}
+                },
+                xaxis: {
+                    title: {
+                        text: 'Time',
+                        font: {size: 14, color: '#2c3e50'}
+                    },
+                    showgrid: true,
+                    gridcolor: '#e0e0e0'
+                },
+                yaxis: {
+                    title: {
+                        text: 'Speed (m/s)',
+                        font: {size: 14, color: '#2c3e50'}
+                    },
+                    showgrid: true,
+                    gridcolor: '#e0e0e0',
+                    tickformat: '.2f'
+                },
+                height: 500,
+                margin: {t: 80, r: 60, b: 80, l: 80},
+                plot_bgcolor: 'white',
+                paper_bgcolor: 'white',
+                font: {family: 'Segoe UI, Arial, sans-serif'},
+                legend: {
+                    orientation: 'h',
+                    x: 0.5,
+                    xanchor: 'center',
+                    y: -0.2
+                }
+            };
+            
+            Plotly.newPlot('speed-chart', traces, layout, {responsive: true, displayModeBar: false});
+        })
+        .catch(error => {
+            document.getElementById('speed-chart').innerHTML = 
+                '<div class="alert alert-danger">Error loading speed data</div>';
+        });
+}
+
+function loadGpsMap() {
+    fetch(buildApiUrl())
+        .then(response => response.json())
+        .then(data => {
+            if (!data.data || data.data.length === 0) {
+                document.getElementById('gps-map').innerHTML = 
+                    '<div class="alert alert-warning">No GPS data available.</div>';
+                return;
+            }
+            
+            const validGpsData = data.data.filter(d => d.latitude && d.longitude);
+            
+            if (validGpsData.length === 0) {
+                document.getElementById('gps-map').innerHTML = 
+                    '<div class="alert alert-warning">No valid GPS coordinates found.</div>';
+                return;
+            }
+            
+            const traces = [{
+                lat: validGpsData.map(d => d.latitude),
+                lon: validGpsData.map(d => d.longitude),
+                mode: 'markers+lines',
+                type: 'scattermapbox',
+                marker: {size: 8, color: '#667eea'},
+                line: {color: '#764ba2', width: 2},
+                name: 'GPS Path'
+            }];
+            
+            const layout = {
+                title: {
+                    text: 'GPS Tracking - Real-time Location Path',
+                    font: {size: 16, color: '#2c3e50'}
+                },
+                mapbox: {
+                    style: 'open-street-map',
+                    center: {
+                        lat: validGpsData[0].latitude,
+                        lon: validGpsData[0].longitude
+                    },
+                    zoom: 12
+                },
+                height: 500,
+                margin: {t: 80, r: 60, b: 60, l: 60},
+                font: {family: 'Segoe UI, Arial, sans-serif'}
+            };
+            
+            Plotly.newPlot('gps-map', traces, layout, {responsive: true, displayModeBar: false});
+        })
+        .catch(error => {
+            document.getElementById('gps-map').innerHTML = 
+                '<div class="alert alert-danger">Error loading GPS data</div>';
+        });
+}
+
+function load3DAcceleration() {
+    fetch(buildApiUrl())
+        .then(response => response.json())
+        .then(data => {
+            if (!data.data || data.data.length === 0) {
+                document.getElementById('acceleration-3d').innerHTML = 
+                    '<div class="alert alert-warning">No acceleration data available.</div>';
+                return;
+            }
+            
+            const traces = [{
+                x: data.data.map(d => d.accel_x || 0),
+                y: data.data.map(d => d.accel_y || 0),
+                z: data.data.map(d => d.accel_z || 0),
+                mode: 'markers',
+                type: 'scatter3d',
+                marker: {
+                    size: 3,
+                    color: data.data.map(d => d.speed || 0),
+                    colorscale: 'Viridis',
+                    showscale: true,
+                    colorbar: {title: 'Speed (m/s)'}
+                },
+                name: '3D Acceleration'
+            }];
+            
+            const layout = {
+                title: {
+                    text: '3D Acceleration Space - Motion Vector Analysis',
+                    font: {size: 16, color: '#2c3e50'}
+                },
+                scene: {
+                    xaxis: {
+                        title: {
+                            text: 'X Acceleration (m/s²)',
+                            font: {size: 12, color: '#2c3e50'}
+                        },
+                        showgrid: true,
+                        gridcolor: '#e0e0e0'
+                    },
+                    yaxis: {
+                        title: {
+                            text: 'Y Acceleration (m/s²)',
+                            font: {size: 12, color: '#2c3e50'}
+                        },
+                        showgrid: true,
+                        gridcolor: '#e0e0e0'
+                    },
+                    zaxis: {
+                        title: {
+                            text: 'Z Acceleration (m/s²)',
+                            font: {size: 12, color: '#2c3e50'}
+                        },
+                        showgrid: true,
+                        gridcolor: '#e0e0e0'
+                    },
+                    bgcolor: 'white'
+                },
+                height: 600,
+                margin: {t: 80, r: 60, b: 80, l: 80},
+                font: {family: 'Segoe UI, Arial, sans-serif'}
+            };
+            
+            Plotly.newPlot('acceleration-3d', traces, layout, {responsive: true, displayModeBar: false});
+        })
+        .catch(error => {
+            document.getElementById('acceleration-3d').innerHTML = 
+                '<div class="alert alert-danger">Error loading 3D acceleration data</div>';
+        });
+}
+
+function loadActivityTimeline() {
+    fetch(buildApiUrl())
+        .then(response => response.json())
+        .then(data => {
+            if (!data.data || data.data.length === 0) {
+                document.getElementById('activity-timeline').innerHTML = 
+                    '<div class="alert alert-warning">No activity data available.</div>';
+                return;
+            }
+            
+            // Group activities by type and create timeline
+            const activities = {};
+            data.data.forEach(d => {
+                if (!activities[d.activity]) activities[d.activity] = [];
+                activities[d.activity].push(new Date(d.timestamp));
+            });
+            
+            const traces = Object.keys(activities).map((activity, index) => ({
+                x: activities[activity],
+                y: Array(activities[activity].length).fill(activity),
+                mode: 'markers',
+                type: 'scatter',
+                name: activity,
+                marker: {
+                    size: 8,
+                    color: ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#f0932b'][index % 5]
+                }
+            }));
+            
+            const layout = {
+                title: {
+                    text: 'Activity Timeline - Motion Classification Over Time',
+                    font: {size: 16, color: '#2c3e50'}
+                },
+                xaxis: {
+                    title: {
+                        text: 'Time',
+                        font: {size: 14, color: '#2c3e50'}
+                    },
+                    showgrid: true,
+                    gridcolor: '#e0e0e0'
+                },
+                yaxis: {
+                    title: {
+                        text: 'Activity Type',
+                        font: {size: 14, color: '#2c3e50'}
+                    },
+                    showgrid: true,
+                    gridcolor: '#e0e0e0'
+                },
+                height: 500,
+                margin: {t: 80, r: 60, b: 80, l: 80},
+                plot_bgcolor: 'white',
+                paper_bgcolor: 'white',
+                font: {family: 'Segoe UI, Arial, sans-serif'},
+                legend: {
+                    orientation: 'h',
+                    x: 0.5,
+                    xanchor: 'center',
+                    y: -0.2
+                }
+            };
+            
+            Plotly.newPlot('activity-timeline', traces, layout, {responsive: true, displayModeBar: false});
+        })
+        .catch(error => {
+            document.getElementById('activity-timeline').innerHTML = 
+                '<div class="alert alert-danger">Error loading activity timeline</div>';
+        });
+}
+
+function updateCharts() {
+    loadAllCharts();
+}
+
+function updateChartStyle() {
+    // This would modify the chart types based on selection
+    loadAllCharts();
+}
+
+function refreshAllCharts() {
+    loadAllCharts();
+}
+</script>
+{% endblock %} 

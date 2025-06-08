@@ -1,0 +1,677 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics - IoT Sensor Data{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-analytics"></i> Advanced Analytics & Insights
+                        <div class="float-end">
+                            <button class="btn btn-sm btn-outline-light me-2" onclick="generateReport()">
+                                <i class="fas fa-file-pdf"></i> Generate Report
+                            </button>
+                            <button class="btn btn-sm btn-outline-light" onclick="refreshAnalytics()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Metrics Dashboard -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <h3 class="stat-number" id="total-distance">0.0</h3>
+                    <p class="stat-label">Total Distance (km)</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <h3 class="stat-number" id="avg-speed">0.0</h3>
+                    <p class="stat-label">Average Speed (m/s)</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <h3 class="stat-number" id="active-time">0</h3>
+                    <p class="stat-label">Active Time (min)</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <h3 class="stat-number" id="calories-burned">0</h3>
+                    <p class="stat-label">Est. Calories Burned</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Time Period Selector -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label for="analysis-period" class="form-label">Analysis Period</label>
+                            <select class="form-select" id="analysis-period" onchange="updateAnalysis()">
+                                <option value="today">Today</option>
+                                <option value="yesterday">Yesterday</option>
+                                <option value="last7days" selected>Last 7 Days</option>
+                                <option value="last30days">Last 30 Days</option>
+                                <option value="all">All Time</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="device-filter" class="form-label">Device Filter</label>
+                            <select class="form-select" id="device-filter" onchange="updateAnalysis()">
+                                <option value="">All Devices</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="metric-focus" class="form-label">Focus Metric</label>
+                            <select class="form-select" id="metric-focus" onchange="updateFocusMetric()">
+                                <option value="activity">Activity Analysis</option>
+                                <option value="movement">Movement Patterns</option>
+                                <option value="performance">Performance Metrics</option>
+                                <option value="health">Health Insights</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analytics Charts -->
+    <div class="row">
+        <!-- Activity Duration Chart -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock"></i> Activity Duration Analysis
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="activity-duration-chart" class="chart-container">
+                        <div class="text-center">
+                            <div class="loading-spinner"></div>
+                            <p class="mt-2">Loading activity duration...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Movement Intensity Heatmap -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-fire"></i> Movement Intensity Heatmap
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="intensity-heatmap" class="chart-container">
+                        <div class="text-center">
+                            <div class="loading-spinner"></div>
+                            <p class="mt-2">Loading intensity heatmap...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily Activity Patterns -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-alt"></i> Daily Activity Patterns
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="daily-patterns-chart" class="chart-container">
+                        <div class="text-center">
+                            <div class="loading-spinner"></div>
+                            <p class="mt-2">Loading daily patterns...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Trends -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line"></i> Performance Trends
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="performance-trends-chart" class="chart-container">
+                        <div class="text-center">
+                            <div class="loading-spinner"></div>
+                            <p class="mt-2">Loading performance trends...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Movement Efficiency -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-route"></i> Movement Efficiency
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="efficiency-chart" class="chart-container">
+                        <div class="text-center">
+                            <div class="loading-spinner"></div>
+                            <p class="mt-2">Loading efficiency metrics...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Correlation Matrix -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-project-diagram"></i> Sensor Correlation Matrix
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="correlation-matrix" class="chart-container">
+                        <div class="text-center">
+                            <div class="loading-spinner"></div>
+                            <p class="mt-2">Loading correlation matrix...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadDeviceOptions();
+    loadAllAnalytics();
+});
+
+function loadDeviceOptions() {
+    fetch('/api/data?limit=1000')
+        .then(response => response.json())
+        .then(data => {
+            const devices = [...new Set(data.data.map(item => item.device_id))];
+            const select = document.getElementById('device-filter');
+            select.innerHTML = '<option value="">All Devices</option>';
+            devices.forEach(device => {
+                select.innerHTML += `<option value="${device}">${device}</option>`;
+            });
+        })
+        .catch(error => console.error('Error loading devices:', error));
+}
+
+function buildAnalyticsApiUrl() {
+    const params = new URLSearchParams();
+    const period = document.getElementById('analysis-period').value;
+    const device = document.getElementById('device-filter').value;
+    
+    if (device) params.append('device_id', device);
+    
+    // Set limit based on period
+    const limitMap = {
+        'today': 1440,
+        'yesterday': 1440,
+        'last7days': 10080,
+        'last30days': 43200,
+        'all': 50000
+    };
+    params.append('limit', limitMap[period] || 10000);
+    
+    return `/api/data?${params.toString()}`;
+}
+
+function loadAllAnalytics() {
+    updateKeyMetrics();
+    loadActivityDurationChart();
+    loadIntensityHeatmap();
+    loadDailyPatternsChart();
+    loadPerformanceTrendsChart();
+    loadEfficiencyChart();
+    loadCorrelationMatrix();
+}
+
+function updateKeyMetrics() {
+    fetch(buildAnalyticsApiUrl())
+        .then(response => response.json())
+        .then(data => {
+            if (!data.data || data.data.length === 0) return;
+            
+            // Calculate total distance
+            let totalDistance = 0;
+            let totalSpeed = 0;
+            let activeMinutes = 0;
+            
+            for (let i = 1; i < data.data.length; i++) {
+                const curr = data.data[i];
+                const prev = data.data[i-1];
+                
+                if (curr.latitude && curr.longitude && prev.latitude && prev.longitude) {
+                    const dist = calculateDistance(
+                        prev.latitude, prev.longitude,
+                        curr.latitude, curr.longitude
+                    );
+                    totalDistance += dist;
+                }
+                
+                if (curr.speed) totalSpeed += curr.speed;
+                if (curr.activity && curr.activity !== 'stationary') activeMinutes++;
+            }
+            
+            const avgSpeed = data.data.length > 0 ? totalSpeed / data.data.length : 0;
+            const estimatedCalories = calculateCalories(activeMinutes, avgSpeed);
+            
+            document.getElementById('total-distance').textContent = (totalDistance / 1000).toFixed(2);
+            document.getElementById('avg-speed').textContent = avgSpeed.toFixed(1);
+            document.getElementById('active-time').textContent = Math.round(activeMinutes / 60);
+            document.getElementById('calories-burned').textContent = Math.round(estimatedCalories);
+        })
+        .catch(error => console.error('Error updating metrics:', error));
+}
+
+function loadActivityDurationChart() {
+    fetch(buildAnalyticsApiUrl())
+        .then(response => response.json())
+        .then(data => {
+            if (!data.data || data.data.length === 0) {
+                document.getElementById('activity-duration-chart').innerHTML = 
+                    '<div class="alert alert-warning">No activity data available.</div>';
+                return;
+            }
+            
+            // Group by activity and calculate durations
+            const activityDurations = {};
+            data.data.forEach(d => {
+                if (!activityDurations[d.activity]) activityDurations[d.activity] = 0;
+                activityDurations[d.activity]++;
+            });
+            
+            const traces = [{
+                x: Object.keys(activityDurations),
+                y: Object.values(activityDurations).map(v => v / 60), // Convert to hours
+                type: 'bar',
+                marker: {
+                    color: ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#f0932b']
+                }
+            }];
+            
+            const layout = {
+                title: 'Activity Duration (Hours)',
+                xaxis: {title: 'Activity Type'},
+                yaxis: {title: 'Duration (Hours)'},
+                margin: {t: 50, r: 50, b: 50, l: 50}
+            };
+            
+            Plotly.newPlot('activity-duration-chart', traces, layout, {responsive: true});
+        })
+        .catch(error => {
+            document.getElementById('activity-duration-chart').innerHTML = 
+                '<div class="alert alert-danger">Error loading activity duration chart</div>';
+        });
+}
+
+function loadIntensityHeatmap() {
+    fetch(buildAnalyticsApiUrl())
+        .then(response => response.json())
+        .then(data => {
+            if (!data.data || data.data.length === 0) {
+                document.getElementById('intensity-heatmap').innerHTML = 
+                    '<div class="alert alert-warning">No intensity data available.</div>';
+                return;
+            }
+            
+            // Create intensity matrix by hour and day
+            const hours = Array.from({length: 24}, (_, i) => i);
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const intensityMatrix = Array(7).fill().map(() => Array(24).fill(0));
+            
+            data.data.forEach(d => {
+                const date = new Date(d.timestamp);
+                const hour = date.getHours();
+                const day = date.getDay();
+                const intensity = Math.sqrt((d.accel_x || 0)**2 + (d.accel_y || 0)**2 + (d.accel_z || 0)**2);
+                intensityMatrix[day][hour] += intensity;
+            });
+            
+            const traces = [{
+                z: intensityMatrix,
+                x: hours,
+                y: days,
+                type: 'heatmap',
+                colorscale: 'Viridis'
+            }];
+            
+            const layout = {
+                title: 'Movement Intensity by Day & Hour',
+                xaxis: {title: 'Hour of Day'},
+                yaxis: {title: 'Day of Week'},
+                margin: {t: 50, r: 50, b: 50, l: 50}
+            };
+            
+            Plotly.newPlot('intensity-heatmap', traces, layout, {responsive: true});
+        })
+        .catch(error => {
+            document.getElementById('intensity-heatmap').innerHTML = 
+                '<div class="alert alert-danger">Error loading intensity heatmap</div>';
+        });
+}
+
+function loadDailyPatternsChart() {
+    fetch(buildAnalyticsApiUrl())
+        .then(response => response.json())
+        .then(data => {
+            if (!data.data || data.data.length === 0) {
+                document.getElementById('daily-patterns-chart').innerHTML = 
+                    '<div class="alert alert-warning">No daily pattern data available.</div>';
+                return;
+            }
+            
+            // Group by day and calculate average activity
+            const dailyData = {};
+            data.data.forEach(d => {
+                const date = new Date(d.timestamp).toDateString();
+                if (!dailyData[date]) dailyData[date] = {total: 0, count: 0, active: 0};
+                dailyData[date].total += (d.speed || 0);
+                dailyData[date].count++;
+                if (d.activity && d.activity !== 'stationary') dailyData[date].active++;
+            });
+            
+            const dates = Object.keys(dailyData).sort();
+            const avgSpeeds = dates.map(date => dailyData[date].total / dailyData[date].count);
+            const activityRatios = dates.map(date => (dailyData[date].active / dailyData[date].count) * 100);
+            
+            const traces = [
+                {
+                    x: dates,
+                    y: avgSpeeds,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Avg Speed',
+                    yaxis: 'y'
+                },
+                {
+                    x: dates,
+                    y: activityRatios,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Activity %',
+                    yaxis: 'y2'
+                }
+            ];
+            
+            const layout = {
+                title: 'Daily Activity Patterns',
+                xaxis: {title: 'Date'},
+                yaxis: {title: 'Average Speed (m/s)', side: 'left'},
+                yaxis2: {title: 'Activity Percentage (%)', side: 'right', overlaying: 'y'},
+                margin: {t: 50, r: 50, b: 80, l: 50}
+            };
+            
+            Plotly.newPlot('daily-patterns-chart', traces, layout, {responsive: true});
+        })
+        .catch(error => {
+            document.getElementById('daily-patterns-chart').innerHTML = 
+                '<div class="alert alert-danger">Error loading daily patterns chart</div>';
+        });
+}
+
+function loadPerformanceTrendsChart() {
+    fetch(buildAnalyticsApiUrl())
+        .then(response => response.json())
+        .then(data => {
+            if (!data.data || data.data.length === 0) {
+                document.getElementById('performance-trends-chart').innerHTML = 
+                    '<div class="alert alert-warning">No performance data available.</div>';
+                return;
+            }
+            
+            // Calculate rolling averages for performance metrics
+            const windowSize = Math.max(1, Math.floor(data.data.length / 50));
+            const rollingSpeed = [];
+            const rollingIntensity = [];
+            const timestamps = [];
+            
+            for (let i = windowSize; i < data.data.length; i += windowSize) {
+                const window = data.data.slice(i - windowSize, i);
+                const avgSpeed = window.reduce((sum, d) => sum + (d.speed || 0), 0) / window.length;
+                const avgIntensity = window.reduce((sum, d) => {
+                    return sum + Math.sqrt((d.accel_x || 0)**2 + (d.accel_y || 0)**2 + (d.accel_z || 0)**2);
+                }, 0) / window.length;
+                
+                rollingSpeed.push(avgSpeed);
+                rollingIntensity.push(avgIntensity);
+                timestamps.push(new Date(window[Math.floor(window.length/2)].timestamp));
+            }
+            
+            const traces = [
+                {
+                    x: timestamps,
+                    y: rollingSpeed,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Speed Trend',
+                    line: {color: '#667eea'}
+                },
+                {
+                    x: timestamps,
+                    y: rollingIntensity,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Intensity Trend',
+                    yaxis: 'y2',
+                    line: {color: '#764ba2'}
+                }
+            ];
+            
+            const layout = {
+                title: 'Performance Trends Over Time',
+                xaxis: {title: 'Time'},
+                yaxis: {title: 'Speed (m/s)', side: 'left'},
+                yaxis2: {title: 'Movement Intensity', side: 'right', overlaying: 'y'},
+                margin: {t: 50, r: 50, b: 50, l: 50}
+            };
+            
+            Plotly.newPlot('performance-trends-chart', traces, layout, {responsive: true});
+        })
+        .catch(error => {
+            document.getElementById('performance-trends-chart').innerHTML = 
+                '<div class="alert alert-danger">Error loading performance trends chart</div>';
+        });
+}
+
+function loadEfficiencyChart() {
+    fetch(buildAnalyticsApiUrl())
+        .then(response => response.json())
+        .then(data => {
+            if (!data.data || data.data.length === 0) {
+                document.getElementById('efficiency-chart').innerHTML = 
+                    '<div class="alert alert-warning">No efficiency data available.</div>';
+                return;
+            }
+            
+            // Calculate efficiency metrics by activity type
+            const activityEfficiency = {};
+            data.data.forEach(d => {
+                if (!activityEfficiency[d.activity]) {
+                    activityEfficiency[d.activity] = {speeds: [], intensities: []};
+                }
+                activityEfficiency[d.activity].speeds.push(d.speed || 0);
+                const intensity = Math.sqrt((d.accel_x || 0)**2 + (d.accel_y || 0)**2 + (d.accel_z || 0)**2);
+                activityEfficiency[d.activity].intensities.push(intensity);
+            });
+            
+            const activities = Object.keys(activityEfficiency);
+            const efficiencyScores = activities.map(activity => {
+                const speeds = activityEfficiency[activity].speeds;
+                const intensities = activityEfficiency[activity].intensities;
+                const avgSpeed = speeds.reduce((a, b) => a + b, 0) / speeds.length;
+                const avgIntensity = intensities.reduce((a, b) => a + b, 0) / intensities.length;
+                return avgIntensity > 0 ? (avgSpeed / avgIntensity) * 100 : 0;
+            });
+            
+            const traces = [{
+                x: activities,
+                y: efficiencyScores,
+                type: 'bar',
+                marker: {
+                    color: efficiencyScores.map(score => score > 50 ? '#4ecdc4' : '#ff6b6b')
+                }
+            }];
+            
+            const layout = {
+                title: 'Movement Efficiency by Activity',
+                xaxis: {title: 'Activity Type'},
+                yaxis: {title: 'Efficiency Score'},
+                margin: {t: 50, r: 50, b: 50, l: 50}
+            };
+            
+            Plotly.newPlot('efficiency-chart', traces, layout, {responsive: true});
+        })
+        .catch(error => {
+            document.getElementById('efficiency-chart').innerHTML = 
+                '<div class="alert alert-danger">Error loading efficiency chart</div>';
+        });
+}
+
+function loadCorrelationMatrix() {
+    fetch(buildAnalyticsApiUrl())
+        .then(response => response.json())
+        .then(data => {
+            if (!data.data || data.data.length === 0) {
+                document.getElementById('correlation-matrix').innerHTML = 
+                    '<div class="alert alert-warning">No correlation data available.</div>';
+                return;
+            }
+            
+            // Calculate correlation matrix for sensor data
+            const sensors = ['accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z', 'speed'];
+            const correlationMatrix = sensors.map(() => Array(sensors.length).fill(0));
+            
+            // Simple correlation calculation (Pearson)
+            for (let i = 0; i < sensors.length; i++) {
+                for (let j = 0; j < sensors.length; j++) {
+                    const xValues = data.data.map(d => d[sensors[i]] || 0);
+                    const yValues = data.data.map(d => d[sensors[j]] || 0);
+                    correlationMatrix[i][j] = calculateCorrelation(xValues, yValues);
+                }
+            }
+            
+            const traces = [{
+                z: correlationMatrix,
+                x: sensors,
+                y: sensors,
+                type: 'heatmap',
+                colorscale: 'RdBu',
+                zmid: 0
+            }];
+            
+            const layout = {
+                title: 'Sensor Data Correlation Matrix',
+                xaxis: {title: 'Sensors'},
+                yaxis: {title: 'Sensors'},
+                margin: {t: 50, r: 50, b: 80, l: 80}
+            };
+            
+            Plotly.newPlot('correlation-matrix', traces, layout, {responsive: true});
+        })
+        .catch(error => {
+            document.getElementById('correlation-matrix').innerHTML = 
+                '<div class="alert alert-danger">Error loading correlation matrix</div>';
+        });
+}
+
+
+
+// Utility functions
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // Earth's radius in meters
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+function calculateCalories(activeMinutes, avgSpeed) {
+    // Simplified calorie calculation
+    const met = avgSpeed > 2 ? 4.5 : avgSpeed > 1 ? 3.0 : 1.5;
+    const weight = 70; // Assume 70kg
+    return (met * weight * (activeMinutes / 60)) / 60;
+}
+
+function calculateCorrelation(x, y) {
+    const n = x.length;
+    const sumX = x.reduce((a, b) => a + b, 0);
+    const sumY = y.reduce((a, b) => a + b, 0);
+    const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
+    const sumX2 = x.reduce((sum, xi) => sum + xi * xi, 0);
+    const sumY2 = y.reduce((sum, yi) => sum + yi * yi, 0);
+    
+    const numerator = n * sumXY - sumX * sumY;
+    const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+    
+    return denominator === 0 ? 0 : numerator / denominator;
+}
+
+
+
+function updateAnalysis() {
+    loadAllAnalytics();
+}
+
+function updateFocusMetric() {
+    // This would change the focus of the analytics based on selection
+    loadAllAnalytics();
+}
+
+function refreshAnalytics() {
+    loadAllAnalytics();
+}
+
+function generateReport() {
+    // This would generate a PDF report of the analytics
+    alert('Report generation feature coming soon!');
+}
+</script>
+{% endblock %} 
