@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>3D Mobile Orientation</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+    }
+    .navbar {
+      background-color: #333;
+      overflow: hidden;
+    }
+    .navbar a {
+      float: left;
+      display: block;
+      color: #f2f2f2;
+      text-align: center;
+      padding: 14px 20px;
+      text-decoration: none;
+    }
+    .navbar a:hover {
+      background-color: #ddd;
+      color: black;
+    }
+    h1 {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .main {
+      display: flex;
+      justify-content: space-around;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      padding: 20px;
+    }
+    #plot {
+      width: 800px;
+      height: 800px;
+      margin: 0 auto;
+    }
+    .data-box {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      max-width: 280px;
+      margin-top: 60px;
+      font-size: 18px;
+    }
+    .data-box h2 {
+      font-size: 20px;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .data-box p {
+      margin: 10px 0;
+    }
+    .info {
+      font-size: 14px;
+      margin-top: 20px;
+      color: #555;
+      border-top: 1px solid #ccc;
+      padding-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="navbar">
+    <a href="/">3D Orientation (Live)</a>
+    <a href="/graphs">Sensor Graphs</a>
+  </div>
+
+  <h1>3D Orientation Viewer</h1>
+
+  <div class="main">
+    <div id="plot"></div>
+
+    <div class="data-box">
+      <h2>Current Orientation</h2>
+      <p><strong>Pitch:</strong> <span id="pitch">0</span>°</p>
+      <p><strong>Roll:</strong> <span id="roll">0</span>°</p>
+      <p><strong>Yaw:</strong> <span id="yaw">0</span>°</p>
+      <div class="info">
+        <strong>Axis Reference:</strong><br>
+        <strong>Pitch</strong> → X-axis (tilt forward/back)<br>
+        <strong>Roll</strong> → Y-axis (tilt side to side)<br>
+        <strong>Yaw</strong> → Z-axis (spin flat)
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const orientation = {{ orientation | safe }};
+    let frame = 0;
+
+    const v = [
+      [-1.5, -0.2, -3], [1.5, -0.2, -3], [1.5, -0.2, 3], [-1.5, -0.2, 3],
+      [-1.5,  0.2, -3], [1.5,  0.2, -3], [1.5,  0.2, 3], [-1.5,  0.2, 3]
+    ];
+
+    const faces = [
+      [0, 1, 2, 3], [4, 5, 6, 7],
+      [0, 1, 5, 4], [2, 3, 7, 6],
+      [0, 3, 7, 4], [1, 2, 6, 5]
+    ];
+
+    function toRadians(deg) {
+      return deg * Math.PI / 180;
+    }
+
+    function rotate(vertices, pitch, roll, yaw) {
+      pitch = toRadians(pitch);
+      roll = toRadians(roll);
+      yaw = toRadians(yaw);
+
+      const Rx = [
+        [1, 0, 0],
+        [0, Math.cos(pitch), -Math.sin(pitch)],
+        [0, Math.sin(pitch),  Math.cos(pitch)]
+      ];
+      const Ry = [
+        [Math.cos(roll), 0, Math.sin(roll)],
+        [0, 1, 0],
+        [-Math.sin(roll), 0, Math.cos(roll)]
+      ];
+      const Rz = [
+        [Math.cos(yaw), -Math.sin(yaw), 0],
+        [Math.sin(yaw),  Math.cos(yaw), 0],
+        [0, 0, 1]
+      ];
+      const multiply = (m, v) =>
+        m.map(row => row.reduce((sum, val, i) => sum + val * v[i], 0));
+
+      return vertices.map(p =>
+        multiply(Rz, multiply(Ry, multiply(Rx, p)))
+      );
+    }
+
+    function draw(pitch, roll, yaw) {
+      const rotated = rotate(v, pitch, roll, yaw);
+      const x = rotated.map(p => p[0]);
+      const y = rotated.map(p => p[1]);
+      const z = rotated.map(p => p[2]);
+
+      const phone = faces.map(face => ({
+        type: 'mesh3d',
+        x: face.map(i => x[i]),
+        y: face.map(i => y[i]),
+        z: face.map(i => z[i]),
+        color: 'steelblue',
+        opacity: 0.8,
+        showscale: false
+      }));
+
+      Plotly.newPlot('plot', phone, {
+        scene: {
+          xaxis: { range: [-5, 5], title: 'X' },
+          yaxis: { range: [-5, 5], title: 'Y' },
+          zaxis: { range: [-5, 5], title: 'Z' },
+          aspectmode: 'cube',
+          dragmode: 'orbit',
+          camera: { eye: { x: 2, y: 2, z: 1.5 } }
+        },
+        margin: { l: 0, r: 0, t: 0, b: 0 }
+      });
+
+      document.getElementById("pitch").innerText = pitch.toFixed(1);
+      document.getElementById("roll").innerText = roll.toFixed(1);
+      document.getElementById("yaw").innerText = yaw.toFixed(1);
+    }
+
+    function animate() {
+      if (frame >= orientation.length) frame = 0;
+      const { pitch, roll, yaw } = orientation[frame++];
+      draw(pitch, roll, yaw);
+      setTimeout(animate, 100);
+    }
+
+    animate();
+  </script>
+
+</body>
+</html>
