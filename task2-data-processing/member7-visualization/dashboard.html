@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>IoT Sensor Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <h2>Real-time Sensor Dashboard</h2>
+
+<div id="accel-plot" style="height:350px; margin-bottom: 30px;"></div>
+<div id="gyro-plot" style="height:350px; margin-bottom: 30px;"></div>
+<div id="loc-plot" style="height:350px; margin-bottom: 30px;"></div>
+<div id="speed-plot" style="height:200px; margin-bottom: 30px;"></div>
+
+
+
+<script>
+    function fetchDataAndPlot() {
+        fetch('/plot_data')
+            .then(response => response.json())
+            .then(data => {
+                Plotly.newPlot('accel-plot', JSON.parse(data['accel']), {
+    title: 'Accelerometer',
+    yaxis: {title: 'Acceleration (m/s²)'},
+    xaxis: {title: 'Sample Index'},
+    autosize: true
+});
+Plotly.newPlot('gyro-plot', JSON.parse(data['gyro']), {
+    title: 'Gyroscope',
+    yaxis: {title: 'Angular Velocity (°/s)'},
+    xaxis: {title: 'Sample Index'},
+    autosize: true
+});
+Plotly.newPlot('loc-plot', JSON.parse(data['location']), {
+    title: 'Location (lat/lon/altitude)',
+    yaxis: {title: 'Value'},
+    xaxis: {title: 'Sample Index'},
+    autosize: true
+});
+Plotly.newPlot('speed-plot', JSON.parse(data['speed']), {
+    title: 'Speed',
+    yaxis: {title: 'Speed (m/s)', range: [0, 2]},  // or choose a better max if needed
+    xaxis: {title: 'Sample Index'},
+    autosize: true
+});
+
+            });
+    }
+    fetchDataAndPlot();
+    setInterval(fetchDataAndPlot, 5000);
+</script>
+</body>
+</html>
