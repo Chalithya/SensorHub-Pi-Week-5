@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Real-Time 3D Sensor Visualizer</title>
+    <style>
+        body {
+            background-color: #111;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        select, button {
+            font-size: 16px;
+            padding: 10px;
+            margin: 15px;
+        }
+        form {
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Real-Time 3D Sensor Visualizer</h1>
+
+    <!-- Dropdown Menu for Sensor Type -->
+    <form method="POST">
+        <label for="sensor_type">Select Sensor:</label>
+        <select name="sensor_type" id="sensor_type" onchange="this.form.submit()">
+            <option value="Accelerometer" {% if selected_option == 'Accelerometer' %}selected{% endif %}>Accelerometer</option>
+            <option value="Gyroscope" {% if selected_option == 'Gyroscope' %}selected{% endif %}>Gyroscope</option>
+        </select>
+        <button type="submit" style="background-color: #28a745; color: white; border: none;">🔄 Refresh</button>
+    </form>
+
+    <!-- Plot Area -->
+    <div style="margin: auto; width: 80%;">
+        {{ plot_div | safe }}
+    </div>
+</body>
+</html>
